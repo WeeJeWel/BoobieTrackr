@@ -6,7 +6,7 @@ import UIKit
 extension FeedingStore {
     func acceptShare(_ metadata: CKShare.Metadata) {
         guard let sharedStore else {
-            errorMessage = "Shared iCloud storage isn’t available yet. Please try the invitation again."
+            errorMessage = String(localized: "Shared iCloud storage isn’t available yet. Please try the invitation again.")
             return
         }
         container.acceptShareInvitations(from: [metadata], into: sharedStore) { _, error in
@@ -14,7 +14,7 @@ extension FeedingStore {
                 if let error { self.errorMessage = error.localizedDescription }
                 else {
                     self.selectedJournalID = ""
-                    self.cloudStatus = "Invitation accepted. Syncing your shared journal…"
+                    self.cloudStatus = String(localized: "Invitation accepted. Syncing your shared journal…")
                     self.refresh()
                 }
             }
@@ -39,7 +39,7 @@ struct SharingView: View {
         Group {
             if isSharedJournal {
                 if let share {
-                    CloudSharingSheet(share: share, babyName: store.activeJournal?.name ?? "Our baby")
+                    CloudSharingSheet(share: share, babyName: store.activeJournal?.name ?? String(localized: "Our baby"))
                         .environmentObject(store)
                 } else {
                     NavigationStack {
@@ -74,7 +74,7 @@ struct SharingView: View {
                 if let existing = try store.container.fetchShares(matching: [journal.objectID])[journal.objectID] {
                     share = existing
                 } else {
-                    message = "Sharing details are still syncing. Please try again."
+                    message = String(localized: "Sharing details are still syncing. Please try again.")
                 }
             } catch { message = error.localizedDescription }
         }
@@ -87,7 +87,7 @@ struct SharingView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
                         Image(systemName: "person.2.fill").font(.title).foregroundStyle(Palette.accent)
-                        Text(store.activeJournal?.name ?? "Our baby").font(.system(.title2, design: .serif))
+                        Text(store.activeJournal?.name ?? String(localized: "Our baby")).font(.system(.title2, design: .serif))
                         Text("Invite your partner to this baby’s journal. Everyone invited can rename the baby and add, edit, or delete feedings.")
                             .font(.subheadline).foregroundStyle(Palette.muted)
                     }.padding(.vertical, 12)
@@ -96,12 +96,12 @@ struct SharingView: View {
                         Task { @MainActor in
                             do {
                                 guard !store.localOnly else {
-                                    message = "Sharing needs a signed build with iCloud enabled. Demo data stays on this device."
+                                    message = String(localized: "Sharing needs a signed build with iCloud enabled. Demo data stays on this device.")
                                     preparing = false
                                     return
                                 }
                                 let journal = try store.journalForNewEvent()
-                                let journalTitle = "\(journal.name)’s feeding journal"
+                                let journalTitle = String(localized: "\(journal.name)’s feeding journal")
                                 try store.container.viewContext.save()
                                 store.refresh()
                                 if let existing = try store.container.fetchShares(matching: [journal.objectID])[journal.objectID] {
@@ -145,7 +145,7 @@ struct SharingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(isPresented: $showingShare) {
-                if let share { CloudSharingSheet(share: share, babyName: store.activeJournal?.name ?? "Our baby").environmentObject(store) }
+                if let share { CloudSharingSheet(share: share, babyName: store.activeJournal?.name ?? String(localized: "Our baby")).environmentObject(store) }
             }
             .alert("iCloud sharing", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK") { message = nil }
@@ -173,7 +173,7 @@ struct CloudSharingSheet: UIViewControllerRepresentable {
         let store: FeedingStore
         let babyName: String
         init(store: FeedingStore, babyName: String) { self.store = store; self.babyName = babyName }
-        func itemTitle(for csc: UICloudSharingController) -> String? { "\(babyName)’s feeding journal" }
+        func itemTitle(for csc: UICloudSharingController) -> String? { String(localized: "\(babyName)’s feeding journal") }
         func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: Error) {
             Task { @MainActor in store.errorMessage = error.localizedDescription }
         }

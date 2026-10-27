@@ -28,7 +28,7 @@ extension FeedingStore {
                     defaults.set(running.eventID.uuidString, forKey: "liveActivityEventID")
                     observe(activity)
                 } catch {
-                    errorMessage = "Feeding saved. The Lock Screen timer couldn’t start: \(error.localizedDescription)"
+                    errorMessage = String(localized: "Feeding saved. The Lock Screen timer couldn’t start: \(error.localizedDescription)")
                 }
             }
         } while liveActivitySyncAgain

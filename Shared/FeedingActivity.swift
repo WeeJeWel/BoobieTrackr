@@ -12,7 +12,7 @@ struct FeedingAttributes: ActivityAttributes {
 }
 
 struct StopFeedingIntent: LiveActivityIntent {
-    static var title: LocalizedStringResource = "Stop feeding"
+    static var title: LocalizedStringResource = "Done"
     static var description = IntentDescription("Save the elapsed breastfeeding duration.")
     @Parameter(title: "Feeding ID") var eventID: String
 
@@ -31,7 +31,7 @@ struct StopFeedingIntent: LiveActivityIntent {
 }
 
 struct SwitchBreastIntent: LiveActivityIntent {
-    static var title: LocalizedStringResource = "Stop and switch sides"
+    static var title: LocalizedStringResource = "Switch sides"
     static var description = IntentDescription("Save this duration and immediately start the other breast.")
     @Parameter(title: "Feeding ID") var eventID: String
 

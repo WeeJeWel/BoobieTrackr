@@ -5,9 +5,9 @@ enum FeedingKind: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .breast: return "Breast"
-        case .pump: return "Pump"
-        case .bottle: return "Bottle"
+        case .breast: return String(localized: "Breast")
+        case .pump: return String(localized: "Pump")
+        case .bottle: return String(localized: "Bottle")
         }
     }
     var symbol: String {
@@ -23,7 +23,19 @@ enum FeedingKind: String, CaseIterable, Codable, Identifiable {
 enum FeedingSide: String, CaseIterable, Codable, Identifiable {
     case left, right, both
     var id: String { rawValue }
-    var title: String { rawValue.capitalized }
+    var title: String {
+        switch self {
+        case .left: return String(localized: "Left")
+        case .right: return String(localized: "Right")
+        case .both: return String(localized: "Both")
+        }
+    }
+    var breastTitle: String {
+        self == .right ? String(localized: "Right breast") : String(localized: "Left breast")
+    }
+    var switchTitle: String {
+        self == .right ? String(localized: "Switch to Right") : String(localized: "Switch to Left")
+    }
     var opposite: FeedingSide { self == .left ? .right : .left }
 }
 
@@ -38,8 +50,8 @@ enum FeedingCSV {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         var lines = ["id,start_time_utc,type,side,volume_ml,duration_seconds"]
         for row in rows.sorted(by: { $0.start < $1.start }) {
-            let fields = [row.id.uuidString, formatter.string(from: row.start), row.kind.title,
-                          row.kind == .bottle ? "" : row.side?.title ?? "",
+            let fields = [row.id.uuidString, formatter.string(from: row.start), row.kind.rawValue.capitalized,
+                          row.kind == .bottle ? "" : row.side?.rawValue.capitalized ?? "",
                           row.ml.map { String($0) } ?? "", row.duration.map { String(Int($0)) } ?? ""]
             lines.append(fields.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }.joined(separator: ","))
         }

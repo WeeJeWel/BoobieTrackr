@@ -13,6 +13,7 @@ struct FeedingEditor: View {
     @AppStorage("startFeedingTimer") private var startTimer = true
     @State private var contentHeight: CGFloat = 320
     @State private var timeWasEdited = false
+    @State private var durationWasEdited = false
     @State private var confirmingDelete = false
     @State private var validationMessage: String?
     @FocusState private var numberFocused: Bool
@@ -23,15 +24,20 @@ struct FeedingEditor: View {
         _side = State(initialValue: event?.side ?? suggestedSide)
         _start = State(initialValue: event?.startedAt ?? Date())
         _amount = State(initialValue: event?.volume.map { $0.doubleValue.formatted(.number.grouping(.never)) } ?? "")
-        _minutes = State(initialValue: event?.duration.map { ($0.doubleValue / 60).formatted(.number.grouping(.never).precision(.fractionLength(0...2))) } ?? "")
+        _minutes = State(initialValue: event?.wholeMinutes.map { $0.formatted(.number.grouping(.never)) } ?? "")
     }
 
-    private var isRunning: Bool { event != nil && store.running?.eventID == event?.uuid }
+    private var isRunning: Bool {
+        // A saved deletion detaches the object and clears its nonoptional UUID
+        // before SwiftUI has finished dismissing this sheet.
+        guard let event, event.managedObjectContext != nil, !event.isDeleted else { return false }
+        return store.running?.eventID == event.uuid
+    }
     private var parsedAmount: Double? { try? Double(amount, format: .number.locale(.current)) }
     private var parsedMinutes: Double? { try? Double(minutes, format: .number.locale(.current)) }
     private var fieldsValid: Bool {
         (kind == .breast || amount.isEmpty || (parsedAmount.map { $0.isFinite && $0 >= 0 && $0 <= 10_000 } ?? false))
-        && (minutes.isEmpty || (parsedMinutes.map { $0.isFinite && $0 >= 0 && $0 <= 1_440 } ?? false))
+        && (minutes.isEmpty || (parsedMinutes.map { $0.isFinite && $0.rounded(.towardZero) == $0 && $0 >= 0 && $0 <= 1_440 } ?? false))
     }
 
     var body: some View {
@@ -78,8 +84,12 @@ struct FeedingEditor: View {
                             HStack {
                                 Label("Duration", systemImage: "timer")
                                 Spacer()
-                                TextField("Optional", text: $minutes)
-                                    .multilineTextAlignment(.trailing).keyboardType(.decimalPad)
+                                TextField("Optional", text: Binding(get: { minutes }, set: {
+                                    minutes = $0
+                                    durationWasEdited = true
+                                    persist()
+                                }))
+                                    .multilineTextAlignment(.trailing).keyboardType(.numberPad)
                                     .frame(maxWidth: 120).focused($numberFocused)
                                     .accessibilityLabel("Duration in minutes")
                                 Text("min").foregroundStyle(Palette.muted)
@@ -100,7 +110,7 @@ struct FeedingEditor: View {
                         Button {
                             do {
                                 try store.finish(eventID: event.uuid)
-                                minutes = event.duration.map { ($0.doubleValue / 60).formatted(.number.grouping(.never).precision(.fractionLength(0...2))) } ?? ""
+                                minutes = event.wholeMinutes.map { $0.formatted(.number.grouping(.never)) } ?? ""
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                             } catch { validationMessage = error.localizedDescription }
                         } label: {
@@ -118,7 +128,7 @@ struct FeedingEditor: View {
                                 dismiss()
                             } catch { validationMessage = error.localizedDescription }
                         } label: {
-                            Text(kind == .breast && startTimer ? "Start Feeding" : "Add Feeding")
+                            Text(kind == .breast && startTimer ? String(localized: "Start Feeding") : String(localized: "Add Feeding"))
                                 .font(.headline).frame(maxWidth: .infinity).frame(height: 56)
                                 .foregroundStyle(Palette.background)
                                 .background(Palette.accent, in: Capsule())
@@ -157,10 +167,9 @@ struct FeedingEditor: View {
             .onChange(of: side) { _, _ in UISelectionFeedbackGenerator().selectionChanged(); persist() }
             .onChange(of: start) { _, _ in timeWasEdited = true; persist() }
             .onChange(of: amount) { _, _ in persist() }
-            .onChange(of: minutes) { _, _ in persist() }
             .alert("Delete Feeding?", isPresented: $confirmingDelete) {
                 Button("Delete Feeding", role: .destructive) {
-                    guard let event else { return }
+                    guard let event, event.managedObjectContext != nil, !event.isDeleted else { dismiss(); return }
                     do {
                         try store.delete(event)
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -177,11 +186,11 @@ struct FeedingEditor: View {
     }
 
     private func persist() {
-        guard let event, fieldsValid, !event.isDeleted else { return }
+        guard let event, fieldsValid, event.managedObjectContext != nil, !event.isDeleted else { return }
         do {
             try store.update(event, kind: kind, side: side, start: start,
                              ml: kind == .breast ? nil : parsedAmount,
-                             duration: isRunning ? nil : parsedMinutes.map { $0 * 60 })
+                             duration: isRunning ? nil : (durationWasEdited ? parsedMinutes.map { $0 * 60 } : event.duration?.doubleValue))
             validationMessage = nil
         } catch { validationMessage = error.localizedDescription }
     }
@@ -197,7 +206,7 @@ private struct FeedingTypePicker: UIViewRepresentable {
     func makeUIView(context: Context) -> UISegmentedControl {
         let control = UISegmentedControl(items: FeedingKind.allCases.map(\.title))
         control.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .valueChanged)
-        control.accessibilityLabel = "Feeding type"
+        control.accessibilityLabel = String(localized: "Feeding type")
         control.accessibilityIdentifier = "feedingType"
         control.apportionsSegmentWidthsByContent = false
         return control
@@ -248,7 +257,7 @@ private struct FeedingSidePicker: UIViewRepresentable {
         let control = UISegmentedControl(items: sides.map(\.title))
         control.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .valueChanged)
         control.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 16, weight: .medium)], for: .normal)
-        control.accessibilityLabel = "Side"
+        control.accessibilityLabel = String(localized: "Side")
         control.accessibilityIdentifier = "feedingSide"
         return control
     }

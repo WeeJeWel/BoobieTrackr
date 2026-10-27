@@ -4,7 +4,10 @@ import WidgetKit
 
 @main
 struct FeedingWidgets: WidgetBundle {
-    var body: some Widget { FeedingActivityWidget() }
+    var body: some Widget {
+        FeedingActivityWidget()
+        if #available(iOS 18.0, *) { NewFeedingControl() }
+    }
 }
 
 // iOS 18+ suppresses per-second Live Activity digit animations (Apple issue 115906895).
@@ -16,8 +19,8 @@ struct FeedingActivityWidget: Widget {
                 HStack(spacing: 12) {
                     FeedingIcon(kind: .breast, side: FeedingSide(rawValue: context.state.side))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.babyName ?? "Our baby").font(.headline).lineLimit(1)
-                        Text("\(context.state.side.capitalized) breast").font(.caption).foregroundStyle(Palette.muted)
+                        Text(context.state.babyName ?? String(localized: "Our baby")).font(.headline).lineLimit(1)
+                        Text((FeedingSide(rawValue: context.state.side) ?? .left).breastTitle).font(.caption).foregroundStyle(Palette.muted)
                     }
                     Spacer(minLength: 0)
                     Text(timerInterval: context.state.startedAt...context.state.startedAt.addingTimeInterval(86_400), countsDown: false)
@@ -34,7 +37,7 @@ struct FeedingActivityWidget: Widget {
                     }
                     .tint(Palette.elevated)
                     Button(intent: SwitchBreastIntent(eventID: context.state.eventID.uuidString)) {
-                        Text("Switch to \(context.state.side == "left" ? "Right" : "Left")")
+                        Text((FeedingSide(rawValue: context.state.side) ?? .left).opposite.switchTitle)
                             .lineLimit(1).minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity)
                     }
@@ -50,8 +53,8 @@ struct FeedingActivityWidget: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.babyName ?? "Our baby").font(.caption).lineLimit(1)
-                        Label { Text(context.state.side.capitalized) } icon: {
+                        Text(context.state.babyName ?? String(localized: "Our baby")).font(.caption).lineLimit(1)
+                        Label { Text((FeedingSide(rawValue: context.state.side) ?? .left).title) } icon: {
                             FeedingEventSymbol(kind: .breast, side: FeedingSide(rawValue: context.state.side), size: 20)
                         }
                     }
@@ -70,7 +73,7 @@ struct FeedingActivityWidget: Widget {
                         }
                         .tint(Palette.elevated)
                         Button(intent: SwitchBreastIntent(eventID: context.state.eventID.uuidString)) {
-                            Text("Switch to \(context.state.side == "left" ? "Right" : "Left")")
+                            Text((FeedingSide(rawValue: context.state.side) ?? .left).opposite.switchTitle)
                                 .lineLimit(1).minimumScaleFactor(0.8)
                                 .frame(maxWidth: .infinity)
                         }
@@ -83,7 +86,7 @@ struct FeedingActivityWidget: Widget {
             } compactLeading: {
                 HStack(spacing: 3) {
                     FeedingEventSymbol(kind: .breast, side: FeedingSide(rawValue: context.state.side), size: 20)
-                    Text(context.state.side == "left" ? "L" : "R")
+                    Text(context.state.side == "left" ? String(localized: "L", comment: "Abbreviation for left breast in the Dynamic Island") : String(localized: "R", comment: "Abbreviation for right breast in the Dynamic Island"))
                 }.foregroundStyle(Palette.accent)
             } compactTrailing: {
                 Text(timerInterval: context.state.startedAt...context.state.startedAt.addingTimeInterval(86_400), countsDown: false)

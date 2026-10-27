@@ -5,8 +5,11 @@ options:
     iOS: '17.0'
     watchOS: '10.0'
   xcodeVersion: '16.0'
+  developmentLanguage: en
+  knownRegions: [en, nl, de, fr, es, it, pt-BR, zh-Hans, ja]
 settings:
   base:
+    SWIFT_EMIT_LOC_STRINGS: YES
     SWIFT_VERSION: '5.0'
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: FY9967QY8V
@@ -55,6 +58,8 @@ targets:
       - path: Shared/Theme.swift
       - path: Shared/Assets.xcassets
       - path: Shared/FeedingActivity.swift
+      - path: Shared/NewFeedingIntent.swift
+      - path: Shared/Localizable.xcstrings
       - path: LiveActivity
     settings:
       base:
@@ -68,12 +73,15 @@ targets:
         CFBundleDisplayName: Feeding timer
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Config/Activity.entitlements
+      properties: {}
   BoobieTrackrWatch:
     type: application
     platform: watchOS
     sources:
       - path: Shared
-        excludes: [FeedingActivity.swift]
+        excludes: [FeedingActivity.swift, NewFeedingIntent.swift]
       - path: Watch
     settings:
       base:

@@ -14,9 +14,11 @@ final class FeedingEvent: NSManagedObject, Identifiable {
     @NSManaged var duration: NSNumber?
     @NSManaged var journal: FeedingJournal?
 
+    var wholeMinutes: Int? { duration.map { Int($0.doubleValue / 60) } }
+
     var kind: FeedingKind { FeedingKind(rawValue: kindRaw) ?? .breast }
     var side: FeedingSide? { sideRaw.flatMap(FeedingSide.init(rawValue:)) }
-    var title: String { kind.title + (kind == .bottle ? "" : " · \(side?.title ?? "Left")") }
+    var title: String { kind.title + (kind == .bottle ? "" : " · \((side ?? .left).title)") }
 }
 
 @objc(FeedingJournal)
@@ -31,13 +33,13 @@ enum FeedingError: LocalizedError {
     case storageUnavailable, invalidAmount, invalidDuration, invalidSide, missingTimer, invalidTime, invalidBabyName
     var errorDescription: String? {
         switch self {
-        case .storageUnavailable: return "The feeding journal couldn’t be opened. Please restart the app and try again."
-        case .invalidAmount: return "Enter a volume between 0 and 10,000 ml."
-        case .invalidDuration: return "Enter a duration between 0 and 1,440 minutes."
-        case .invalidSide: return "Choose Left or Right for breastfeeding."
-        case .missingTimer: return "This timer is no longer running. Its feeding is still in your timeline."
-        case .invalidTime: return "A feeding can’t start in the future."
-        case .invalidBabyName: return "Enter a name for your baby."
+        case .storageUnavailable: return String(localized: "The feeding journal couldn’t be opened. Please restart the app and try again.")
+        case .invalidAmount: return String(localized: "Enter a volume between 0 and 10,000 ml.")
+        case .invalidDuration: return String(localized: "Enter a duration between 0 and 1,440 minutes.")
+        case .invalidSide: return String(localized: "Choose Left or Right for breastfeeding.")
+        case .missingTimer: return String(localized: "This timer is no longer running. Its feeding is still in your timeline.")
+        case .invalidTime: return String(localized: "A feeding can’t start in the future.")
+        case .invalidBabyName: return String(localized: "Enter a name for your baby.")
         }
     }
 }
@@ -61,10 +63,11 @@ final class FeedingStore: ObservableObject {
         }
     }
     @Published var errorMessage: String?
-    @Published var cloudStatus = "Connecting to iCloud…"
+    @Published var cloudStatus = String(localized: "Connecting to iCloud…")
     private(set) var loaded = false
     private var observers: [NSObjectProtocol] = []
     #if os(iOS)
+    @Published var newFeedingRequested = false
     var liveActivitySyncing = false
     var liveActivitySyncAgain = false
     #endif
@@ -81,6 +84,9 @@ final class FeedingStore: ObservableObject {
             ?? journals.first { $0.objectID.persistentStore == sharedStore }
             ?? journals.first
     }
+    // Pumping records milk expressed, not a feeding for the selected baby.
+    var lastFeeding: FeedingEvent? { events.last { $0.kind != .pump } }
+
     var runningEvent: FeedingEvent? {
         guard let running else { return nil }
         let request = NSFetchRequest<FeedingEvent>(entityName: "FeedingEvent")
@@ -167,7 +173,7 @@ final class FeedingStore: ObservableObject {
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.transactionAuthor = "BoobieTrackr3000"
-        cloudStatus = localOnly ? "Stored on this device" : "iCloud sync enabled"
+        cloudStatus = localOnly ? String(localized: "Stored on this device") : String(localized: "iCloud sync enabled")
         refresh()
 
         observers.append(NotificationCenter.default.addObserver(forName: .NSPersistentStoreRemoteChange,
@@ -184,9 +190,9 @@ final class FeedingStore: ObservableObject {
                     as? NSPersistentCloudKitContainer.Event else { return }
             Task { @MainActor in
                 if let error = event.error {
-                    self?.cloudStatus = "Saved locally. iCloud: \(error.localizedDescription)"
+                    self?.cloudStatus = String(localized: "Saved locally. iCloud: \(error.localizedDescription)")
                 } else {
-                    self?.cloudStatus = event.endDate == nil ? "Syncing with iCloud…" : "Synced with iCloud"
+                    self?.cloudStatus = event.endDate == nil ? String(localized: "Syncing with iCloud…") : String(localized: "Synced with iCloud")
                 }
                 self?.refresh()
             }
@@ -224,7 +230,7 @@ final class FeedingStore: ObservableObject {
         if let activeJournal { return activeJournal }
         let journal = FeedingJournal(entity: container.managedObjectModel.entitiesByName["FeedingJournal"]!, insertInto: container.viewContext)
         journal.uuid = UUID()
-        journal.name = "Our baby"
+        journal.name = String(localized: "Our baby")
         journal.createdAt = Date()
         container.viewContext.assign(journal, to: privateStore)
         return journal

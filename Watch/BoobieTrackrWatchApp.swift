@@ -29,9 +29,9 @@ struct WatchHomeView: View {
                 VStack(spacing: 12) {
                     if let running = store.running, let event = store.runningEvent {
                         if event.journal?.uuid != store.activeJournal?.uuid {
-                            Text(event.journal?.name ?? "Our baby").font(.caption)
+                            Text(event.journal?.name ?? String(localized: "Our baby")).font(.caption)
                         }
-                        Label { Text("\(event.side?.title ?? "Left") breast") } icon: {
+                        Label { Text((event.side ?? .left).breastTitle) } icon: {
                             FeedingEventSymbol(kind: .breast, side: event.side, size: 22)
                         }
                             .font(.headline).foregroundStyle(Palette.accent)
@@ -44,7 +44,7 @@ struct WatchHomeView: View {
                             } catch { store.errorMessage = error.localizedDescription }
                         }
                         .buttonStyle(.borderedProminent).tint(Palette.accent).foregroundStyle(Palette.background)
-                        Button("Switch to \((event.side ?? .left).opposite.title)") {
+                        Button((event.side ?? .left).opposite.switchTitle) {
                             do {
                                 try store.finish(eventID: event.uuid, switchSide: true)
                                 WKInterfaceDevice.current().play(.start)
@@ -116,7 +116,7 @@ struct WatchHomeView: View {
                     .navigationTitle("Babies")
                 } label: {
                     HStack {
-                        Text(store.activeJournal?.name ?? "Our baby").lineLimit(1)
+                        Text(store.activeJournal?.name ?? String(localized: "Our baby")).lineLimit(1)
                         Image(systemName: "chevron.down").font(.caption2)
                     }
                 }

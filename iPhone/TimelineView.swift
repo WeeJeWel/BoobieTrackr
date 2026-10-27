@@ -61,7 +61,7 @@ struct TimelineView: View {
                             UISelectionFeedbackGenerator().selectionChanged()
                         } label: {
                             Label {
-                                Text(journal.name + (journal.objectID.persistentStore == store.sharedStore ? " · Shared" : ""))
+                                Text(journal.name + (journal.objectID.persistentStore == store.sharedStore ? String(localized: " · Shared") : ""))
                             } icon: {
                                 if journal.uuid == store.activeJournal?.uuid {
                                     Image(systemName: "checkmark")
@@ -80,7 +80,7 @@ struct TimelineView: View {
                     .accessibilityLabel("New Baby")
                 } label: {
                     HStack(spacing: 6) {
-                        Text(store.activeJournal?.name ?? "Our baby")
+                        Text(store.activeJournal?.name ?? String(localized: "Our baby"))
                             .font(.system(.headline, design: .rounded)).lineLimit(1)
                         Image(systemName: "chevron.down").font(.caption2.weight(.semibold))
                     }
@@ -88,7 +88,7 @@ struct TimelineView: View {
                     .contentShape(Rectangle())
                 }
                 .accessibilityIdentifier("babyPicker")
-                .accessibilityLabel("Baby, \(store.activeJournal?.name ?? "Our baby")")
+                .accessibilityLabel("Baby, \(store.activeJournal?.name ?? String(localized: "Our baby"))")
                 Spacer()
                 Button {
                     calendarDay = selectedDay
@@ -103,7 +103,7 @@ struct TimelineView: View {
                     } label: { Label("Manage Baby", systemImage: "person.crop.circle") }
                     .disabled(store.activeJournal == nil)
                     Button { showingSettings = true } label: {
-                        Label(store.sharedStore != nil && store.activeJournal?.objectID.persistentStore == store.sharedStore ? "Participants" : "Invite Partner", systemImage: "person.2")
+                        Label(store.sharedStore != nil && store.activeJournal?.objectID.persistentStore == store.sharedStore ? String(localized: "Participants") : String(localized: "Invite Partner"), systemImage: "person.2")
                     }
                     Button {
                         do { exportURL = try store.exportCSV(); showingExport = true }
@@ -287,58 +287,7 @@ struct TimelineView: View {
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { now = $0 }
         .background(Palette.background)
         .foregroundStyle(Palette.cream)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 10) {
-                if let event = store.runningEvent, let running = store.running {
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            if event.journal?.uuid != store.activeJournal?.uuid {
-                                Text(event.journal?.name ?? "Our baby")
-                                    .font(.caption.weight(.semibold)).lineLimit(1)
-                            }
-                            Text("\(event.side?.title ?? "Left") breast").font(.caption).foregroundStyle(Palette.muted)
-                            Text(running.startedAt, style: .timer)
-                                .font(.system(.body, design: .rounded)).monospacedDigit()
-                                .foregroundStyle(Palette.accent)
-                                .frame(width: 76, alignment: .leading)
-                        }
-                        Spacer(minLength: 0)
-                        Button {
-                            do {
-                                try store.finish(eventID: event.uuid)
-                                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                            } catch { store.errorMessage = error.localizedDescription }
-                        } label: {
-                            Text("Done").lineLimit(1).padding(.vertical, 4)
-                        }
-                        Button {
-                            do {
-                                try store.finish(eventID: event.uuid, switchSide: true)
-                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                            } catch { store.errorMessage = error.localizedDescription }
-                        } label: {
-                            Text("Switch to \((event.side ?? .left).opposite.title)")
-                                .lineLimit(1).minimumScaleFactor(0.65).padding(.vertical, 4)
-                        }
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(Palette.accent)
-                }
-                Button {
-                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                    showingNew = true
-                } label: {
-                    Label("New Feeding", systemImage: "plus")
-                        .font(.system(.headline, design: .rounded))
-                        .frame(maxWidth: .infinity).frame(height: 52)
-                        .foregroundStyle(Palette.background)
-                        .background(Palette.accent, in: Capsule())
-                }
-                .accessibilityIdentifier("newFeeding")
-            }
-            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8)
-            .background(Palette.background)
-        }
+        .safeAreaInset(edge: .bottom, spacing: 0) { feedingBar }
         .alert("New Baby", isPresented: $showingBabyName) {
             TextField("Baby name", text: $babyName)
                 .textInputAutocapitalization(.words)
@@ -362,15 +311,49 @@ struct TimelineView: View {
             }
             Button("Cancel", role: .cancel) { deletingEvent = nil }
         }
+        .onChange(of: store.events) { _, events in
+            if let editingEvent, !events.contains(where: { $0.objectID == editingEvent.objectID }) {
+                self.editingEvent = nil
+            }
+        }
+        .onChange(of: store.newFeedingRequested, initial: true) { _, requested in
+            guard requested else { return }
+            showingBabyName = false
+            confirmingDelete = false
+            if editingEvent != nil || managingBaby != nil || showingSettings || showingExport || showingCalendar {
+                editingEvent = nil
+                managingBaby = nil
+                showingSettings = false
+                showingExport = false
+                showingCalendar = false
+            } else {
+                showingNew = true
+                store.newFeedingRequested = false
+            }
+        }
         .sheet(isPresented: $showingNew) {
             FeedingEditor(event: nil, suggestedSide: store.events.last(where: { $0.kind == .breast })?.side?.opposite ?? .left)
                 .environmentObject(store)
         }
-        .sheet(item: $managingBaby) { baby in BabyEditor(journal: baby).environmentObject(store) }
-        .sheet(item: $editingEvent) { event in FeedingEditor(event: event).environmentObject(store) }
-        .sheet(isPresented: $showingSettings) { SharingView().environmentObject(store) }
-        .sheet(isPresented: $showingExport) { if let exportURL { ExportSheet(url: exportURL) } }
-        .sheet(isPresented: $showingCalendar) {
+        .sheet(item: $managingBaby, onDismiss: {
+            if store.newFeedingRequested { showingNew = true; store.newFeedingRequested = false }
+        }) { baby in BabyEditor(journal: baby).environmentObject(store) }
+        .sheet(item: $editingEvent, onDismiss: {
+            if store.newFeedingRequested { showingNew = true; store.newFeedingRequested = false }
+        }) { event in
+            if event.managedObjectContext != nil && !event.isDeleted {
+                FeedingEditor(event: event).environmentObject(store)
+            }
+        }
+        .sheet(isPresented: $showingSettings, onDismiss: {
+            if store.newFeedingRequested { showingNew = true; store.newFeedingRequested = false }
+        }) { SharingView().environmentObject(store) }
+        .sheet(isPresented: $showingExport, onDismiss: {
+            if store.newFeedingRequested { showingNew = true; store.newFeedingRequested = false }
+        }) { if let exportURL { ExportSheet(url: exportURL) } }
+        .sheet(isPresented: $showingCalendar, onDismiss: {
+            if store.newFeedingRequested { showingNew = true; store.newFeedingRequested = false }
+        }) {
             VStack(alignment: .leading, spacing: 8) {
                 FeedingCalendar(selectedDay: calendarDay,
                                 eventDays: Set(store.events.map { Calendar.current.startOfDay(for: $0.startedAt) })) { day in
@@ -385,6 +368,69 @@ struct TimelineView: View {
             .presentationBackground(Palette.background)
             .presentationDragIndicator(.visible)
         }
+    }
+
+    private var feedingBar: some View {
+        VStack(spacing: 10) {
+            if let event = store.runningEvent, let running = store.running {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if event.journal?.uuid != store.activeJournal?.uuid {
+                            Text(event.journal?.name ?? String(localized: "Our baby"))
+                                .font(.caption.weight(.semibold)).lineLimit(1)
+                        }
+                        Text((event.side ?? .left).breastTitle).font(.caption).foregroundStyle(Palette.muted)
+                        Text(running.startedAt, style: .timer)
+                            .font(.system(.body, design: .rounded)).monospacedDigit()
+                            .foregroundStyle(Palette.accent)
+                            .frame(width: 76, alignment: .leading)
+                    }
+                    Spacer(minLength: 0)
+                    Button {
+                        do {
+                            try store.finish(eventID: event.uuid)
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        } catch { store.errorMessage = error.localizedDescription }
+                    } label: {
+                        Text("Done").lineLimit(1).padding(.vertical, 4)
+                    }
+                    Button {
+                        do {
+                            try store.finish(eventID: event.uuid, switchSide: true)
+                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        } catch { store.errorMessage = error.localizedDescription }
+                    } label: {
+                        Text((event.side ?? .left).opposite.switchTitle)
+                            .lineLimit(1).minimumScaleFactor(0.65).padding(.vertical, 4)
+                    }
+                }
+                .font(.subheadline.weight(.medium))
+                .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(Palette.accent)
+            }
+            Button {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                showingNew = true
+            } label: {
+                Label("New Feeding", systemImage: "plus")
+                    .font(.system(.headline, design: .rounded))
+                    .frame(maxWidth: .infinity).frame(height: 52)
+                    .foregroundStyle(Palette.background)
+                    .background(Palette.accent, in: Capsule())
+            }
+            .accessibilityIdentifier("newFeeding")
+            if let last = store.lastFeeding {
+                SwiftUI.TimelineView(.periodic(from: last.startedAt, by: 60)) { context in
+                    let elapsed = Duration.seconds(max(0, context.date.timeIntervalSince(last.startedAt)))
+                        .formatted(.units(allowed: [.hours, .minutes], width: .wide, fractionalPart: .hide(rounded: .towardZero)))
+                    Text("\(elapsed) since last feeding")
+                        .font(.caption).foregroundStyle(Palette.muted)
+                        .multilineTextAlignment(.center)
+                }
+                .accessibilityIdentifier("timeSinceLastFeeding")
+            }
+        }
+        .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8)
+        .background(Palette.background)
     }
 
     private func hourRow(_ hour: TimelineHour, events: [FeedingEvent]) -> some View {
@@ -415,7 +461,7 @@ struct TimelineView: View {
                                         HStack(spacing: 4) {
                                             Text(event.startedAt, format: .dateTime.hour().minute())
                                             if let volume = event.volume { Text("· \(volume.doubleValue.formatted()) ml") }
-                                            if let duration = event.duration { Text("· \(Int(duration.doubleValue / 60)) min") }
+                                            if let minutes = event.wholeMinutes { Text("· \(minutes) min") }
                                             if store.running?.eventID == event.uuid {
                                                 Circle().fill(Palette.accent).frame(width: 5, height: 5).accessibilityLabel("Running")
                                             }

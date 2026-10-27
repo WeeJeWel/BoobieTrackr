@@ -1,5 +1,6 @@
 import CoreData
 import XCTest
+import SwiftUI
 @testable import BoobieTrackr3000
 
 @MainActor
@@ -272,4 +273,61 @@ final class FeedingStoreTests: XCTestCase {
         XCTAssertEqual(store.activeJournal, next)
         XCTAssertTrue(store.events.isEmpty)
     }
+    func testLastFeedingUsesStartIgnoresPumpAndTracksEditsAndDeletion() throws {
+        XCTAssertNil(store.lastFeeding)
+        let start = Date().addingTimeInterval(-4_800)
+        let breast = try store.add(kind: .breast, start: start, startTimer: false)
+        try store.update(breast, kind: .breast, side: .left, start: start, ml: nil, duration: 3_600)
+        try store.add(kind: .pump, side: .both, start: start.addingTimeInterval(600))
+        XCTAssertEqual(store.lastFeeding?.startedAt, start)
+        let bottle = try store.add(kind: .bottle, start: start.addingTimeInterval(1_200))
+        XCTAssertEqual(store.lastFeeding, bottle)
+        try store.update(breast, kind: .breast, side: .left, start: start.addingTimeInterval(1_800), ml: nil, duration: nil)
+        XCTAssertEqual(store.lastFeeding, breast)
+        try store.delete(breast)
+        XCTAssertEqual(store.lastFeeding, bottle)
+        try store.createBaby(name: "Another baby")
+        try store.add(kind: .pump, side: .left)
+        XCTAssertNil(store.lastFeeding)
+    }
+
+    func testWholeMinuteDisplayPreservesRecordedSeconds() throws {
+        let event = try store.add(kind: .breast, startTimer: false)
+        XCTAssertNil(event.wholeMinutes)
+        for (seconds, minutes) in [(0, 0), (59, 0), (60, 1), (119, 1), (4_859, 80)] {
+            try store.update(event, kind: .breast, side: .left, start: event.startedAt, ml: nil, duration: Double(seconds))
+            XCTAssertEqual(event.wholeMinutes, minutes)
+            XCTAssertEqual(event.duration?.intValue, seconds)
+        }
+    }
+
+    func testAllTranslationsAreBundledIncludingDynamicLabels() throws {
+        for language in ["nl", "de", "fr", "es", "it", "pt-BR", "zh-Hans", "ja"] {
+            let path = try XCTUnwrap(Bundle.main.path(forResource: language, ofType: "lproj"), language)
+            let bundle = try XCTUnwrap(Bundle(path: path))
+            for key in ["New Feeding", "%@ since last feeding", "Switch to Right", "Delete Baby?"] {
+                let translated = bundle.localizedString(forKey: key, value: nil, table: "Localizable")
+                XCTAssertNotEqual(translated, key, "\(language): \(key)")
+            }
+        }
+    }
+
+    func testDeletedFeedingEditorCanRenderWhileDismissing() async throws {
+        for startTimer in [false, true] {
+            let event = try store.add(kind: .breast, startTimer: startTimer)
+            let editor = FeedingEditor(event: event).environmentObject(store)
+            let controller = UIHostingController(rootView: editor)
+            controller.loadViewIfNeeded()
+            controller.view.frame = CGRect(x: 0, y: 0, width: 390, height: 600)
+            controller.view.layoutIfNeeded()
+            try store.delete(event)
+            // The outgoing sheet can redraw before its dismissal completes.
+            controller.rootView = editor
+            await Task.yield()
+            controller.view.layoutIfNeeded()
+            XCTAssertNil(event.managedObjectContext)
+            XCTAssertNil(store.running)
+        }
+    }
+
 }
