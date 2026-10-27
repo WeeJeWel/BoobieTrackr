@@ -28,7 +28,10 @@ QUICK ENTRIES ON YOUR WRIST
 Start a left or right feed, log a bottle, or record pumping from Apple Watch. Save a breastfeeding timer or switch sides right in the Watch app.
 
 YOUR HISTORY, AT A GLANCE
-Browse the daily timeline, jump to a date, and export a baby's feeding history as a CSV file.
+Browse the daily timeline, see how long it has been since the last feed, jump to a date, and export a baby's feeding history as a CSV file.
+
+ONE TAP FROM CONTROL CENTER
+Open a new feeding from Control Center or Shortcuts. Available in English, Dutch, German, French, Spanish, Italian, Portuguese, Simplified Chinese, and Japanese.
 
 No ads. No separate account to create. iCloud sync and partner invitations use your Apple Account.
 
@@ -42,7 +45,7 @@ SCREENSHOT COPY
 4. Apple Watch. Live Activities. — On your wrist. On your Lock Screen.
 
 REVIEW NOTES
-The app is a feeding journal for iPhone with a companion Apple Watch app. It does not require an app-specific login. An Apple Account signed into iCloud is required for cloud sync and invitations. Feeding records can be entered locally without a separate account. Breastfeeding timers are optional; bottle and pumping entries support optional milliliter amounts. Partner invitations use Apple's native CloudKit sharing interface. The app does not provide medical advice or use HealthKit.
+The app is a feeding journal for iPhone with a companion Apple Watch app. It does not require an app-specific login. An Apple Account signed into iCloud is required for cloud sync and invitations. Feeding records can be entered locally without a separate account. Breastfeeding timers are optional; bottle and pumping entries support optional milliliter amounts. Partner invitations use Apple's native CloudKit sharing interface. The app does not provide medical advice or use HealthKit. The New Feeding control is available in Control Center on iOS 18 and later and opens the feeding entry sheet. App language follows the device or per-app language setting.
 
 STORE URLS
 Support URL: https://emile.nl
@@ -74,4 +77,4 @@ Medium export command: sips -z 2622 1206 <source> --out <destination>
 REPLACEMENT BUILD — 2026-10-27
 Version 1.0 (build 2) archived at build/release/BoobieTrackr-build-2.xcarchive. Includes elapsed time since last feeding, whole-minute editing, eight added languages, Control Center/Shortcuts entry, and the editor deletion crash fix. All 28 tests passed before archiving.
 ITSAppUsesNonExemptEncryption is false: only Apple system-service encryption, no custom encryption or third-party cryptography libraries.
-Upload and replacement submission pending: App Store Connect browser session expired; Xcode CLI export reports Failed to Use Accounts, and the Mac must be unlocked to use Organizer. Existing submission has not been withdrawn.
+Build 2 installed successfully on both Emile’s and Mandy’s iPhones. Previous submission withdrawn; version status verified as Developer Rejected. Updated description and review notes saved in App Store Connect. Upload and replacement submission pending: Xcode has no Apple Account configured and Organizer requires App Store Connect access for Emile B.V.; awaiting Xcode sign-in. Browser sign-in is complete.
