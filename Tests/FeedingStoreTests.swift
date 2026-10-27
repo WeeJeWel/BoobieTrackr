@@ -330,4 +330,28 @@ final class FeedingStoreTests: XCTestCase {
         }
     }
 
+    func testControlSymbolRendersVisiblePixelsInAppAndExtension() throws {
+        let extensionURL = try XCTUnwrap(Bundle.main.builtInPlugInsURL).appendingPathComponent("FeedingActivity.appex")
+        let extensionBundle = try XCTUnwrap(Bundle(url: extensionURL))
+        for bundle in [Bundle.main, extensionBundle] {
+            for scale in [UIImage.SymbolScale.small, .medium, .large] {
+                let configuration = UIImage.SymbolConfiguration(pointSize: 32, weight: .regular, scale: scale)
+                let image = try XCTUnwrap(UIImage(named: "BreastControl", in: bundle, with: configuration), "Missing symbol in \(bundle.bundleURL.lastPathComponent), scale \(scale.rawValue)")
+                XCTAssertTrue(image.isSymbolImage)
+                let format = UIGraphicsImageRendererFormat()
+                format.scale = 1
+                let rendered = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64), format: format).image { _ in
+                    image.withTintColor(.white, renderingMode: .alwaysOriginal).draw(in: CGRect(x: 8, y: 8, width: 48, height: 48))
+                }
+                let cgImage = try XCTUnwrap(rendered.cgImage)
+                var pixels = [UInt8](repeating: 0, count: 64 * 64 * 4)
+                let context = try XCTUnwrap(CGContext(data: &pixels, width: 64, height: 64, bitsPerComponent: 8,
+                    bytesPerRow: 64 * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                context.draw(cgImage, in: CGRect(x: 0, y: 0, width: 64, height: 64))
+                let visiblePixels = stride(from: 3, to: pixels.count, by: 4).filter { pixels[$0] > 32 }.count
+                XCTAssertGreaterThan(visiblePixels, 100, "Empty symbol in \(bundle.bundleURL.lastPathComponent), scale \(scale.rawValue)")
+            }
+        }
+    }
+
 }
