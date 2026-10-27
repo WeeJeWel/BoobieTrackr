@@ -13,7 +13,7 @@ settings:
     SWIFT_VERSION: '5.0'
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: FY9967QY8V
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 2
     MARKETING_VERSION: '1.0'
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     CLOUDKIT_CONTAINER: iCloud.nl.weejewel.BoobieTrackr3000
@@ -33,7 +33,10 @@ targets:
     info:
       path: Config/iPhone-Info.plist
       properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleDisplayName: BoobieTrackr
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         UIUserInterfaceStyle: Dark
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
@@ -70,6 +73,8 @@ targets:
     info:
       path: Config/Activity-Info.plist
       properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleDisplayName: Feeding timer
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -90,7 +95,10 @@ targets:
     info:
       path: Config/Watch-Info.plist
       properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleDisplayName: BoobieTrackr
+        ITSAppUsesNonExemptEncryption: false
         WKApplication: true
         WKCompanionAppBundleIdentifier: nl.weejewel.BoobieTrackr3000
         WKRunsIndependentlyOfCompanionApp: true
