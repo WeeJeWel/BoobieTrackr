@@ -7,7 +7,7 @@ struct NewFeedingControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "nl.weejewel.BoobieTrackr3000.newFeeding") {
             ControlWidgetButton(action: NewFeedingIntent()) {
-                Label("New Feeding", systemImage: "plus.circle.fill")
+                Label("New Feeding", image: "BreastControl")
             }
         }
         .displayName("New Feeding")
